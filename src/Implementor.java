@@ -9,7 +9,7 @@ class MyPrinter {
     public MyPrinter(String resultPath) {
         try {
             out = new PrintWriter(resultPath);
-            rout = new FileWriter("./data/roc.out");
+            rout = new FileWriter("./data/ROC.out");
             rout.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -28,29 +28,28 @@ class MyPrinter {
     public final void close() {
         out.close();
     }
-
-    public final void rocRecord(double fpr,double tpr) {
+    public final synchronized void rocRecord(double fpr,double tpr) {
         try {
-            rout = new FileWriter("./data/roc.out",true);
+            rout = new FileWriter("./data/ROC.out",true);
             rout.write(fpr+"\t"+tpr+"\n");
             rout.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    public final void rocOver() {
+    public final synchronized void rocOver() {
         try {
-            rout = new FileWriter("./data/roc.out",true);
-            rout.write("_over_");
+            rout = new FileWriter("./data/ROC.out",true);
+            rout.write("_over_\n");
             rout.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    public final void rocExit() {
+    public final synchronized void rocExit() {
         try {
-            rout = new FileWriter("./data/roc.out",true);
-            rout.write("_exit_");
+            rout = new FileWriter("./data/ROC.out",true);
+            rout.write("_exit_\n");
             rout.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -78,9 +77,9 @@ class MyTimer {
             state = false;
             long delt = end - start;
             if (train) {
-                printer.println("\tTraining:\t"+delt+"ms elapsed.");
+                printer.println("\tTraining:  "+delt+"ms elapsed.");
             } else {
-                printer.println("\tTesting:\t"+delt+"ms elapsed.");
+                printer.println("\tTesting:   "+delt+"ms elapsed.");
             }
         }
     }
@@ -112,7 +111,7 @@ public abstract class Implementor {
         }
         recStats(truePos,trueNeg,falsePos,falseNeg);
     }
-    private void recStatc(int truePos,int trueNeg,int falsePos,int falseNeg) {
+    private void recStats(int truePos,int trueNeg,int falsePos,int falseNeg) {
         int total = truePos+trueNeg+falsePos+falseNeg;
         double acc = (truePos+trueNeg+.0)/total;
         printer.println("\tacc\t= "+acc);
@@ -125,13 +124,19 @@ public abstract class Implementor {
         printer.rocRecord(fpr,tpr);
         printer.println("\tTPR\t= "+tpr);
         printer.println("\tFPR\t= "+fpr);
-        printer.println();
+    }
+    public final MyPrinter getPrinter() {
+        return printer;
     }
 
-    public abstract void setProblem(Collection<Integer> subset);
+    public abstract void setProblem(List<Integer> subset);
     public abstract void train();
     public abstract void setThreshold(double threshold);
     protected abstract int[] doTest();
     protected abstract int getTestResult(int idx);
+
+    static {
+        System.out.println("Reading data files, please wait a minute.");
+    }
 }
 

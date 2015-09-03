@@ -4,10 +4,9 @@ import java.io.*;
 
 public class BasicTask extends AbstractTask {
     private BasicTask(Implementor impl) {
-        super(impl,"BasicTask");
+        super(impl);
     }
     protected void mainThread(double threshold) {
-        printer.println("Threshold:\t"+threshold);
         timer.start();
         implementor.train();
         timer.record(true);
@@ -18,8 +17,8 @@ public class BasicTask extends AbstractTask {
     }
 
     public static void main(String[] args) {
-        Implementor implementor = null;
         MyPrinter printer = new MyPrinter("./data/Basic.out");
+        Implementor implementor = null;
         if (args[0].equals("--Liblinear")) {
             implementor = new LiblinAdapter(printer);
         } else if (args[0].equals("--DIY")) {

@@ -1,7 +1,5 @@
 clean:
-	rm -f bin/*
-	rm -f data/old_model.txt
-	rm -f data/new_model.txt
+	rm -f bin/* data/*.in data/*.out data/old_model.txt data/new_model.txt
 
 bin/Implementor.class: src/Implementor.java
 	javac -d bin src/Implementor.java

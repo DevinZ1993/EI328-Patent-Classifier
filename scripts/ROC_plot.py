@@ -9,7 +9,7 @@ WORKSPACE = os.path.join(CUR_DIR,"..")
 DATA = os.path.join(WORKSPACE,"data")
 
 if __name__=='__main__':
-    fin = open(os.path.join(DATA,"roc.out"),'r')
+    fin = open(os.path.join(DATA,"ROC.out"),'r')
     line = fin.readline()
     num = 0
     while len(line)>0:

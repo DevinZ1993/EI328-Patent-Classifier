@@ -7,10 +7,9 @@ public abstract class AbstractTask {
     protected MyPrinter printer;
     protected MyTimer timer;
 
-    protected AbstractTask(Implementor implementor,String taskName) {
+    protected AbstractTask(Implementor implementor) {
         this.implementor = implementor;
-        implementor.read();
-        printer = new MyPrinter("./data/"+taskName+".out");
+        printer = implementor.getPrinter();
         timer = new MyTimer(printer);
     }
     protected void release() {
@@ -18,7 +17,8 @@ public abstract class AbstractTask {
         printer.close();
     }
     protected void forEachThreshold(double tmin,double tmax,double tstep) {
-        for (double t=tmin;t<tmax+tstep/2;t+=tstep) {
+        for (double t=tmin;t<=tmax+tstep/2;t+=tstep) {
+            printer.println("\nThreshold:\t"+t);
             mainThread(t);
         }
         printer.rocOver();
@@ -34,7 +34,6 @@ public abstract class AbstractTask {
             procInputFile("./data/test","5001:1.00");
         }
     }
-
     private static void procInputFile(String filename,String lineTail) {
         System.out.println("Generating "+filename+".in, please wait a minute.");
         try {
@@ -45,7 +44,7 @@ public abstract class AbstractTask {
                 StringTokenizer tok = new StringTokenizer(fin.nextLine());
                 if (tok.nextToken().charAt(0)=='A') {
                     fout.print("1 ");
-                    cnt = 0;
+                    cnt++;
                 } else {
                     fout.print("-1 ");
                 }
@@ -55,7 +54,7 @@ public abstract class AbstractTask {
                 fout.println(lineTail);
                 total++;
             }
-            System.out.println(filename+".in:\t"+cnt+"/"+total);
+            System.out.println(filename+".in:     "+cnt+"/"+total);
             fout.close();
             fin.close();
         } catch (IOException e) {
@@ -63,6 +62,5 @@ public abstract class AbstractTask {
         }
         System.out.println("\tDone.");
     }
-    
 }
 

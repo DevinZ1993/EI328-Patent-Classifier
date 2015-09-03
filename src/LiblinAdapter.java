@@ -17,7 +17,6 @@ public class LiblinAdapter extends Implementor {
         }
     }
 
-    private Parameter param;
     private Problem myTrain;
     private Model model;
 
@@ -25,7 +24,7 @@ public class LiblinAdapter extends Implementor {
         super(printer);
         myTrain = train;
     }
-    public final void setProblem(Collection<Integer> subset) {
+    public final void setProblem(List<Integer> subset) {
         myTrain = new Problem();
         myTrain.l = subset.size();
         myTrain.n = train.n;
@@ -36,7 +35,8 @@ public class LiblinAdapter extends Implementor {
         }
     }
     public final void train() {
-        model = Linear.train(myTrain,param);
+        model = Linear.train(myTrain,
+                new Parameter(SolverType.L2R_L2LOSS_SVC_DUAL,1.0,0.01));
     }
     public final void setThreshold(double threshold) {
         try {
