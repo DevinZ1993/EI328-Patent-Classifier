@@ -2,29 +2,23 @@ import java.util.*;
 import java.io.*;
 
 
-public abstract class AbstractTask {
+public abstract class AbstractTask extends Thread {
     protected Implementor implementor;
-    protected MyPrinter printer;
-    protected MyTimer timer;
 
-    protected AbstractTask(Implementor implementor) {
-        this.implementor = implementor;
-        printer = implementor.getPrinter();
-        timer = new MyTimer(printer);
-    }
-    protected void release() {
-        printer.rocExit();
-        printer.close();
-    }
-    protected void forEachThreshold(double tmin,double tmax,double tstep) {
-        for (double t=tmin;t<=tmax+tstep/2;t+=tstep) {
-            printer.println("\nThreshold:\t"+t);
-            mainThread(t);
+    protected AbstractTask(String arg) {
+        if (arg.equals("--Liblinear")) {
+            implementor = new LiblinAdapter(printer);
+        } else if (arg.equals("--DIY")) {
+            implementor = new MyImplementor(printer);
+        } else {
+            throw new IllegalArgumentException();
         }
-        printer.rocOver();
     }
 
-    protected abstract void mainThread(double threshold);
+    /** Static Section: */
+
+    protected static MyPrinter printer;
+    protected static MyTimer timer;
 
     static {
         if (!(new File("./data/train.in")).exists()) {

@@ -3,64 +3,38 @@ import java.io.*;
 
 
 class MyPrinter {
-    private FileWriter rout;
     private PrintWriter out;
 
-    public MyPrinter(String resultPath) {
+    public MyPrinter(String filepath) {
         try {
-            out = new PrintWriter(resultPath);
-            rout = new FileWriter("./data/ROC.out");
-            rout.close();
+            out = new PrintWriter(filepath);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-    public final synchronized void print(String str) {
-            System.out.print(str);
-            out.print(str);
-    }
-    public final void println(String str) {
-        print(str+"\n");
-    }
-    public final void println() {
-        print("\n");
     }
     public final void close() {
-        out.close();
-    }
-    public final synchronized void rocRecord(double fpr,double tpr) {
-        try {
-            rout = new FileWriter("./data/ROC.out",true);
-            rout.write(fpr+"\t"+tpr+"\n");
-            rout.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (out!=null) {
+            out.close();
         }
     }
-    public final synchronized void rocOver() {
-        try {
-            rout = new FileWriter("./data/ROC.out",true);
-            rout.write("_over_\n");
-            rout.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public final void print(String str) {
+        System.out.print(str);
+        out.print(str);
     }
-    public final synchronized void rocExit() {
-        try {
-            rout = new FileWriter("./data/ROC.out",true);
-            rout.write("_exit_\n");
-            rout.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public final void println(String str) {
+        System.out.println(str);
+        out.println(str);
+    }
+    public final void println() {
+        System.out.println();
+        out.println();
     }
 }
 
 class MyTimer {
     private long start, end;
-    private MyPrinter printer;
     private boolean state;
+    private MyPrinter printer;
 
     public MyTimer(MyPrinter printer) {
         this.printer = printer;
@@ -71,31 +45,67 @@ class MyTimer {
             state = true;
         }
     }
-    public final synchronized void record(boolean train) {
+    public final synchronized void record(boolean isTraining) {
         if (state) {
             end = System.currentTimeMillis();
             state = false;
             long delt = end - start;
-            if (train) {
-                printer.println("\tTraining:  "+delt+"ms elapsed.");
+            if (isTraining) {
+                printer.println("\tTraining: "+delt+" ms elapsed.");
             } else {
-                printer.println("\tTesting:   "+delt+"ms elapsed.");
+                printer.println("\tTesting: "+delt+" ms elapsed.");
             }
         }
     }
 }
 
+class SubProblem {
+    private List<Integer> list;
+    private int index;
+
+    public SubProblem() {
+        list = new ArrayList<Integer>();
+    }
+    public final void setIdx(int index) {
+        this.index = index;
+    }
+    public final int getIdx() {
+        return index;
+    }
+    public final void add(int k) {
+        list.add(k);
+    }
+    public final int get(int idx) {
+        return list.get(idx);
+    }
+    public final int size() {
+        return list.size();
+    }
+}
+
+class TestResult {
+    public final int[] array;
+    private int index;
+
+    public TestResult(int size) {
+        array = new int[size];
+        Arrays.fill(array,-1);
+    }
+    public final void setIdx(int index) {
+        this.index = index;
+    }
+}
+
 public abstract class Implementor {
-    private MyPrinter printer;
+    protected MyPrinter printer;
 
     public Implementor(MyPrinter printer) {
         this.printer = printer;
     }
-    public final void test() {
-        int[] res = doTest();
+    public final void genStats(int[] res) {
         int truePos=0, trueNeg=0, falsePos=0, falseNeg=0;
         for (int i=0;i<res.length;i++) {
-            if (getTestResult(i)>0) {
+            if (getTestTag(i)>0) {
                 if (res[i]>0) {
                     truePos++;
                 } else {
@@ -107,11 +117,11 @@ public abstract class Implementor {
                 } else {
                     falsePos++;
                 }
-            }   
+            }  
         }
-        recStats(truePos,trueNeg,falsePos,falseNeg);
+        recRes(truePos,trueNeg,falsePos,falseNeg);
     }
-    private void recStats(int truePos,int trueNeg,int falsePos,int falseNeg) {
+    private void recRes(int truePos,int trueNeg,int falsePos,int falseNeg) {
         int total = truePos+trueNeg+falsePos+falseNeg;
         double acc = (truePos+trueNeg+.0)/total;
         printer.println("\tacc\t= "+acc);
@@ -121,22 +131,16 @@ public abstract class Implementor {
         printer.println("\tF1\t= "+f1);
         double tpr = (truePos+.0)/(truePos+falseNeg);
         double fpr = (falsePos+.0)/(falsePos+trueNeg);
-        printer.rocRecord(fpr,tpr);
         printer.println("\tTPR\t= "+tpr);
         printer.println("\tFPR\t= "+fpr);
     }
-    public final MyPrinter getPrinter() {
-        return printer;
-    }
 
-    public abstract void setProblem(List<Integer> subset);
-    public abstract void train();
-    public abstract void setThreshold(double threshold);
-    protected abstract int[] doTest();
-    protected abstract int getTestResult(int idx);
-
-    static {
-        System.out.println("Reading data files, please wait a minute.");
-    }
+    public abstract void train(SubProblem sub);
+    public abstract void setThr(double threshold);
+    public abstract void clear();
+    public abstract TestResult test();
+    public abstract void sepData(List<Integer> posData,List<Integer> negData);
+    protected abstract int getTestTag(int idx);
+    
 }
 

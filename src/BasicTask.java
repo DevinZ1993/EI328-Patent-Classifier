@@ -3,35 +3,37 @@ import java.io.*;
 
 
 public class BasicTask extends AbstractTask {
-    private BasicTask(Implementor impl) {
-        super(impl);
+    private BasicTask(String arg) {
+        super(arg);
     }
-    protected void mainThread(double threshold) {
+    private void work(double t) {
+        printer.println("Thr =\t"+t);
         timer.start();
-        implementor.train();
+        implementor.train(null);
         timer.record(true);
-        implementor.setThreshold(threshold);
+        implementor.setThr(t);
         timer.start();
-        implementor.test();
+        TestResult res = implementor.test();
+        implementor.genStats(res.array);
         timer.record(false);
+        implementor.clear();
     }
 
+    /** Static Section: */
+
+    private static BasicTask task;
+
     public static void main(String[] args) {
-        MyPrinter printer = new MyPrinter("./data/Basic.out");
-        Implementor implementor = null;
-        if (args[0].equals("--Liblinear")) {
-            implementor = new LiblinAdapter(printer);
-        } else if (args[0].equals("--DIY")) {
-            implementor = new MyImplementor(printer);
-        } else {
-            throw new IllegalArgumentException();
-        }
-        BasicTask task = new BasicTask(implementor);
+        printer = new MyPrinter("./data/Basic.log");
+        timer = new MyTimer(printer);
         double tmin = Double.parseDouble(args[1]);
         double tmax = Double.parseDouble(args[2]);
         double tstep = Double.parseDouble(args[3]);
-        task.forEachThreshold(tmin,tmax,tstep);
-        task.release();
+        for (double t=tmin;t<tmax+tstep/2;t+=tstep) {
+            (new BasicTask(args[0])).work(t);
+        }
+        printer.println("\t*** CHANGE M ***");
+        printer.close();
     }
 }
 

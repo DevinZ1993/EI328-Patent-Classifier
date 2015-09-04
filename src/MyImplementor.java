@@ -1,3 +1,4 @@
+import java.util.concurrent.*;
 import java.util.*;
 import java.io.*;
 
@@ -68,6 +69,9 @@ class MyModel {
     private final int dim;
     private double[] weights;
 
+    private MyModel() {
+        dim = 0;
+    }
     private MyModel(MyProblem train) {
         this.train = train;
         dim = train.dim;
@@ -88,7 +92,7 @@ class MyModel {
     public final int predict(List<Term> x) {
         return (sigmoid(x)>0.5)? 1:-1;
     }
-    public final void addThreshold(double threshold) {
+    public final void addThr(double threshold) {
         weights[0] -= threshold;
     }
     private double[] calGradient() {
@@ -124,56 +128,107 @@ class MyModel {
     }
 
     private static final double LAMBDA = 0;
+    private static Object classLock = MyModel.class;
+    private static MyModel DUMMY;
 
     public static MyModel train(MyProblem train) {
         return new MyModel(train);
     }
+    public static MyModel getDummy() {
+        if (DUMMY==null) {
+            synchronized(classLock) {
+                if (DUMMY==null) {
+                    DUMMY = new MyModel();
+                }
+            }
+        }
+        return DUMMY;
+    }
 }
 
 public class MyImplementor extends Implementor {
-    private static MyProblem train, test;
-    
-    static {
-        train = new MyProblem("./data/train.in");
-        test = new MyProblem("./data/test.in");
-    }
-
-    private MyProblem myTrain;
-    private MyModel model;
-
     public MyImplementor(MyPrinter printer) {
         super(printer);
-        myTrain = train;
     }
-    public final void setProblem(List<Integer> subset) {
-        myTrain = new MyProblem(train.dim);
-        for (Integer idx: subset) {
-            myTrain.add(train.x.get(idx),train.y.get(idx));
-        }
-    }
-    public final void train() {
-        model = MyModel.train(myTrain);
-    }
-    public final void setThreshold(double threshold) {
-        if (model!=null) {
-            model.addThreshold(threshold);
-        }
-    }
-    protected final int[] doTest() {
-        int[] res = new int[test.size()];
-        Arrays.fill(res,-1);
-        for (int n=0;n<test.size();n++) {
-            if (model.predict(test.x.get(n))>0) {
-                res[n] = 1;
+    public final void train(SubProblem sub) {
+        MyProblem myTrain = train;
+        int idx = -1;
+        if (sub!=null) {
+            idx = sub.getIdx();
+            myTrain = new MyProblem(train.dim);
+            for (int i=0;i<sub.size();i++) {
+                int j = sub.get(i);
+                myTrain.add(train.x.get(j),train.y.get(j));
             }
         }
-        return res;
+        try {
+            MyModel model = MyModel.train(myTrain);
+            models.put(model);
+            idxMap.put(model,idx);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
-    protected final int getTestResult(int idx) {
+    public final TestResult test() {
+        try {
+            MyModel model = models.take();
+            if (model==DUMMY) {
+                models.put(model);
+            } else {
+                TestResult res = new TestResult(test.size());
+                for (int n=0;n<test.size();n++) {
+                    if (model.predict(test.x.get(n))>0) {
+                        res.array[n] = 1;
+                    }
+                }
+                res.setIdx(idxMap.get(model));
+                return res;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public final synchronized void setThr(double threshold) {
+        for (MyModel model: models) {
+            model.addThr(threshold);
+        }
+        models.add(DUMMY);
+        idxMap.put(DUMMY,-1);
+    }
+    public final synchronized void clear() {
+        models.clear();
+        idxMap.clear();
+    }
+    public final void sepData(List<Integer> posData,List<Integer> negData) {
+        for (int i=0;i<train.size();i++) {
+            if (train.getY(i)>0) {
+                posData.add(i);
+            } else {
+                negData.add(i);
+            }
+        }
+    }
+    protected final int getTestTag(int idx) {
         if (idx<0 || idx>=test.size()) {
             throw new IllegalArgumentException();
         }
         return (test.getY(idx)>0)? 1:-1;
+    }
+
+    /** Static Section: */
+
+    private static MyProblem train, test;
+    private static BlockingQueue<MyModel> models;
+    private static final MyModel DUMMY = MyModel.getDummy();
+    private static Map<MyModel,Integer> idxMap;
+    
+    static {
+        System.out.println("Reading data files, please wait a minute.");
+        train = new MyProblem("./data/train.in");
+        test = new MyProblem("./data/test.in");
+        models = new LinkedBlockingQueue<MyModel>();
+        idxMap = new HashMap<MyModel,Integer>();
     }
 }
 
