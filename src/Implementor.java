@@ -89,10 +89,12 @@ class TestResult {
 
     public TestResult(int size) {
         array = new int[size];
-        Arrays.fill(array,-1);
     }
     public final void setIdx(int index) {
         this.index = index;
+    }
+    public final int getIdx() {
+        return index;
     }
 }
 
@@ -112,7 +114,7 @@ public abstract class Implementor {
                     falseNeg++;
                 }
             } else {
-                if (res[i]<0) {
+                if (res[i]<=0) {
                     trueNeg++;
                 } else {
                     falsePos++;
@@ -140,6 +142,7 @@ public abstract class Implementor {
     public abstract void clear();
     public abstract TestResult test();
     public abstract void sepData(List<Integer> posData,List<Integer> negData);
+    public abstract int  testSize();
     protected abstract int getTestTag(int idx);
     
 }

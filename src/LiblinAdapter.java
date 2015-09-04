@@ -16,6 +16,9 @@ public class LiblinAdapter extends Implementor {
             myTrain = new Problem();
             myTrain.l = sub.size();
             myTrain.n = train.n;
+            myTrain.x = new Feature[myTrain.l][];
+            myTrain.y = new double[myTrain.l];
+            myTrain.bias = 1;
             for (int i=0;i<sub.size();i++) {
                 int j = sub.get(i);
                 myTrain.x[i] = train.x[j];
@@ -65,13 +68,15 @@ public class LiblinAdapter extends Implementor {
                 }
                 StringTokenizer tok = new StringTokenizer(fin.readLine());
                 fout.print(tok.nextToken()+" ");
-                int num = Integer.parseInt(tok.nextToken())+1;
+                int num = Integer.parseInt(tok.nextToken());
                 fout.println(num);
-                for (int i=0;i<num+1;i++) {
+                for (int i=0;i<num+2;i++) {
                     fout.println(fin.readLine());
                 }
-                fout.println(-threshold+" ");
-                fout.println(fin.readLine());
+                tok = new StringTokenizer(fin.readLine());
+                double cst = Double.parseDouble(tok.nextToken());
+                cst -= threshold;
+                fout.println(cst+" ");
                 fout.close();
                 fin.close();
                 model = Model.load(new File("./data/new_model.txt"));
@@ -99,11 +104,14 @@ public class LiblinAdapter extends Implementor {
             }
         }
     }
+    public final int testSize() {
+        return test.l;
+    }
     protected final int getTestTag(int idx) {
         if (idx<0 || idx>=test.l) {
             throw new IllegalArgumentException();
         }
-        return (test.y[idx]>0)? 1:-1;
+        return (test.y[idx]>0)? 1:0;
     }
 
     /** Static Section: */

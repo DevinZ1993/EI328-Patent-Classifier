@@ -7,7 +7,9 @@ public class BasicTask extends AbstractTask {
         super(arg);
     }
     private void work(double t) {
-        printer.println("Thr =\t"+t);
+        printer.println();
+        printer.println();
+        printer.println("Thr =  "+t);
         timer.start();
         implementor.train(null);
         timer.record(true);

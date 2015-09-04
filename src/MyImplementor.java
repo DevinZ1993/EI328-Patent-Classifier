@@ -90,7 +90,7 @@ class MyModel {
         } 
     }
     public final int predict(List<Term> x) {
-        return (sigmoid(x)>0.5)? 1:-1;
+        return (sigmoid(x)>0.5)? 1:0;
     }
     public final void addThr(double threshold) {
         weights[0] -= threshold;
@@ -102,7 +102,7 @@ class MyModel {
         }
         for (int n=0;n<train.size();n++) {
             List<Term> x = train.x.get(n);
-            double delt = sigmoid(x)-(train.getY(n)+1)/2;
+            double delt = sigmoid(x)-train.getY(n);
             grad[0] += delt;
             for (Term term: x) {
                 grad[term.index] += term.value*delt;
@@ -209,11 +209,14 @@ public class MyImplementor extends Implementor {
             }
         }
     }
+    public final int testSize() {
+        return test.size();
+    }
     protected final int getTestTag(int idx) {
         if (idx<0 || idx>=test.size()) {
             throw new IllegalArgumentException();
         }
-        return (test.getY(idx)>0)? 1:-1;
+        return (test.getY(idx)>0)? 1:0;
     }
 
     /** Static Section: */

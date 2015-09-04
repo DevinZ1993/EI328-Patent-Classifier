@@ -22,13 +22,13 @@ public abstract class AbstractTask extends Thread {
 
     static {
         if (!(new File("./data/train.in")).exists()) {
-            procInputFile("./data/train","");
+            procInputFile("./data/train");
         }
         if (!(new File("./data/test.in")).exists()) {
-            procInputFile("./data/test","5001:1.00");
+            procInputFile("./data/test");
         }
     }
-    private static void procInputFile(String filename,String lineTail) {
+    private static void procInputFile(String filename) {
         System.out.println("Generating "+filename+".in, please wait a minute.");
         try {
             Scanner fin = new Scanner(new FileInputStream(filename+".txt"));
@@ -40,12 +40,12 @@ public abstract class AbstractTask extends Thread {
                     fout.print("1 ");
                     cnt++;
                 } else {
-                    fout.print("-1 ");
+                    fout.print("0 ");
                 }
                 while (tok.hasMoreTokens()) {
                     fout.print(tok.nextToken()+" ");
                 }
-                fout.println(lineTail);
+                fout.println();
                 total++;
             }
             System.out.println(filename+".in:     "+cnt+"/"+total);

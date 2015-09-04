@@ -16,23 +16,23 @@ public class MinMaxTask extends AbstractTask implements Runnable {
             e.printStackTrace();
         }
     }
-    private void train() {
+    private void train() throws InterruptedException {
         SubProblem subprob = subprobs.take();
         while (subprob!=DUMMY) {
             implementor.train(subprob);
             subprob = subprobs.take();
         }
         subprobs.put(subprob);
-        trainOver.release()
+        trainOver.release();
     }
-    private void test() {
+    private void test() throws InterruptedException {
         testReady.acquire();
         TestResult res = implementor.test();
         while (res!=null) {
             int idx = res.getIdx();
             for (int i=0;i<minResults[idx].length;i++) {
-                if (res.array[i]<0) {
-                    minResults[idx][i].set(-1);
+                if (res.array[i]<=0) {
+                    minResults[idx][i].set(0);
                 }
             }
             res = implementor.test();
@@ -45,6 +45,7 @@ public class MinMaxTask extends AbstractTask implements Runnable {
     private static final SubProblem DUMMY = new SubProblem();
     private static Semaphore trainOver, testReady;
     private static AtomicInteger[][] minResults;
+    private static int numOfMin, testSize;
 
     static {
         subprobs = new LinkedBlockingQueue<SubProblem>();
@@ -52,8 +53,8 @@ public class MinMaxTask extends AbstractTask implements Runnable {
         testReady = new Semaphore(0);
     }
     private static void maxModule(MinMaxTask[] workers) {
-        int[] maxResult = new int[Implementor.trainSize()];
-        Arrays.fill(maxResult,-1);
+        int[] maxResult = new int[testSize];
+        Arrays.fill(maxResult,0);
         for (int i=0;i<minResults.length;i++) {
             for (int j=0;j<minResults[i].length;j++) {
                 if (minResults[i][j].get()>0) {
@@ -63,52 +64,57 @@ public class MinMaxTask extends AbstractTask implements Runnable {
         }
         workers[0].implementor.genStats(maxResult);
     }
-    private static void preparation(MinMaxTask[] workers,int M) {
-        List<Integer> posData = new ArrayList<Integer>();
-        List<Integer> negData = new ArrayList<Integer>();
-        workers[0].sepData(posData,negData);
-        int posGrpNum = (posData.length+M-1)/M;
-        int negGrpNum = (negData.length+N-1)/N;
+    private static void buildSubProbs(MinMaxTask[] workers,int M) {
+        List<Integer> posData = new LinkedList<Integer>();
+        List<Integer> negData = new LinkedList<Integer>();
+        workers[0].implementor.sepData(posData,negData);
+        int posGrpNum = (posData.size()+M-1)/M;
+        int negGrpNum = (negData.size()+M-1)/M;
         int[] posGrps = new int[posGrpNum+1];
         int[] negGrps = new int[negGrpNum+1];
         for (int i=0;i<posGrpNum;i++) {
-            posGrps[i+1] = posGrps[i]+(poslst.size()+i)/posGrpNum;
+            posGrps[i+1] = posGrps[i]+(posData.size()+i)/posGrpNum;
         }
         for (int i=0;i<negGrpNum;i++) {
-            negGrps[i+1] = negGrps[i]+(neglst.size()+i)/negGrpNum;
+            negGrps[i+1] = negGrps[i]+(negData.size()+i)/negGrpNum;
         }
         for (int i=0;i<posGrpNum;i++) {
             for (int j=0;j<negGrpNum;j++) {
                 SubProblem subprob = new SubProblem();
                 subprob.setIdx(i);
                 for (int k=posGrps[i];k<posGrps[i+1];k++) {
-                    subprob.add(poslst.get(k));
+                    subprob.add(posData.get(k));
                 }
                 for (int k=negGrps[j];k<negGrps[j+1];k++) {
-                    subprob.add(neglst.get(k));
+                    subprob.add(negData.get(k));
                 }
                 subprobs.add(subprob);
             }
         }
-        int trainSize = posData.size()+negData.size();
-        minResults = new AtomicInteger[posGrpNum][trainSize];
+        subprobs.add(DUMMY);
+        numOfMin = posGrpNum;
+    }
+    private static void buildMinModules() {
+        minResults = new AtomicInteger[numOfMin][testSize];
         for (int i=0;i<minResults.length;i++) {
-            for (int j=0;j<trainSize;j++) {
+            for (int j=0;j<testSize;j++) {
                 minResults[i][j] = new AtomicInteger(1);
             }
         }
     }
     private static void mainThread(String arg,int N,int M,double t) {
-        printer.println("N =\t"+N);
-        printer.println("M =\t"+M);
-        printer.println("Thr =\t"+t);
+        printer.println("N =  "+N);
+        printer.println("M =  "+M);
+        printer.println("Thr =  "+t);
         MinMaxTask[] workers = new MinMaxTask[N];
         Thread[] pool = new Thread[N];
         for (int i=0;i<N;i++) {
             workers[i] = new MinMaxTask(arg);
             pool[i] = new Thread(workers[i]);
         }
-        preparation(workers,M);
+        testSize = workers[0].implementor.testSize();
+        buildSubProbs(workers,M);
+        buildMinModules();
         try {
             timer.start();
             for (int i=0;i<N;i++) {
@@ -128,7 +134,7 @@ public class MinMaxTask extends AbstractTask implements Runnable {
             }
             maxModule(workers);
             timer.record(false);
-            workers[0].clear();
+            workers[0].implementor.clear();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -139,12 +145,12 @@ public class MinMaxTask extends AbstractTask implements Runnable {
         double tmin = Double.parseDouble(args[1]);
         double tmax = Double.parseDouble(args[2]);
         double tstep = Double.parseDouble(args[3]);
-        int mmin = Integer.parseInteger(args[4]);
-        int mmax = Integer.parseInteger(args[5]);
-        int mstep = Integer.parseInteger(args[6]);
-        int nmin = Integer.parseInteger(args[7]);
-        int nmax = Integer.parseInteger(args[8]);
-        int nstep = Integer.parseInteger(args[9]);
+        int mmin = Integer.parseInt(args[4]);
+        int mmax = Integer.parseInt(args[5]);
+        int mstep = Integer.parseInt(args[6]);
+        int nmin = Integer.parseInt(args[7]);
+        int nmax = Integer.parseInt(args[8]);
+        int nstep = Integer.parseInt(args[9]);
         for (int N=nmin;N<=nmax;N+=nstep) {
             for (int M=mmin;M<=mmax;M+=mstep) {
                 for (double t=tmin;t<tmax+tstep/2;t+=tstep) {

@@ -16,12 +16,14 @@ if __name__=='__main__':
         line = fin.readline()
         if len(line)==0:
             break
+        elif line=="\t*** CHANGE N ***\n":
+            continue
         elif line=="\t*** CHANGE M ***\n":
             pl.plot(x,y)
             x = []
             y = []
         else:
-            for i in range(0,4):
+            for i in range(0,6):
                 line = fin.readline()
             y.append(string.atof(line.split()[2]))
             line = fin.readline()
