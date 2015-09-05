@@ -18,7 +18,7 @@ public class MinMaxTask extends AbstractTask implements Runnable {
     }
     private void train() throws InterruptedException {
         SubProblem subprob = subprobs.take();
-        while (subprob!=DUMMY) {
+        while (subprob!=SubProblem.DUMMY) {
             implementor.train(subprob);
             subprob = subprobs.take();
         }
@@ -42,7 +42,6 @@ public class MinMaxTask extends AbstractTask implements Runnable {
     /** Static Section: */
 
     private static BlockingQueue<SubProblem> subprobs;
-    private static final SubProblem DUMMY = new SubProblem();
     private static Semaphore trainOver, testReady;
     private static AtomicInteger[][] minResults;
     private static int numOfMin, testSize;
@@ -52,22 +51,10 @@ public class MinMaxTask extends AbstractTask implements Runnable {
         trainOver = new Semaphore(0);
         testReady = new Semaphore(0);
     }
-    private static void maxModule(MinMaxTask[] workers) {
-        int[] maxResult = new int[testSize];
-        Arrays.fill(maxResult,0);
-        for (int i=0;i<minResults.length;i++) {
-            for (int j=0;j<minResults[i].length;j++) {
-                if (minResults[i][j].get()>0) {
-                    maxResult[j] = 1;
-                }
-            }
-        }
-        workers[0].implementor.genStats(maxResult);
-    }
-    private static void buildSubProbs(MinMaxTask[] workers,int M) {
+    private static void buildSubProbs(Implementor impl,int M) {
         List<Integer> posData = new LinkedList<Integer>();
         List<Integer> negData = new LinkedList<Integer>();
-        workers[0].implementor.sepData(posData,negData);
+        impl.staticSepData(posData,negData);
         int posGrpNum = (posData.size()+M-1)/M;
         int negGrpNum = (negData.size()+M-1)/M;
         int[] posGrps = new int[posGrpNum+1];
@@ -78,6 +65,7 @@ public class MinMaxTask extends AbstractTask implements Runnable {
         for (int i=0;i<negGrpNum;i++) {
             negGrps[i+1] = negGrps[i]+(negData.size()+i)/negGrpNum;
         }
+        subprobs.clear();
         for (int i=0;i<posGrpNum;i++) {
             for (int j=0;j<negGrpNum;j++) {
                 SubProblem subprob = new SubProblem();
@@ -91,7 +79,7 @@ public class MinMaxTask extends AbstractTask implements Runnable {
                 subprobs.add(subprob);
             }
         }
-        subprobs.add(DUMMY);
+        subprobs.add(SubProblem.DUMMY);
         numOfMin = posGrpNum;
     }
     private static void buildMinModules() {
@@ -102,18 +90,31 @@ public class MinMaxTask extends AbstractTask implements Runnable {
             }
         }
     }
+    private static void maxModule(Implementor impl) {
+        int[] maxResult = new int[testSize];
+        Arrays.fill(maxResult,0);
+        for (int i=0;i<minResults.length;i++) {
+            for (int j=0;j<minResults[i].length;j++) {
+                if (minResults[i][j].get()>0) {
+                    maxResult[j] = 1;
+                }
+            }
+        }
+        impl.staticGenStats(maxResult);
+    }
     private static void mainThread(String arg,int N,int M,double t) {
-        printer.println("N =  "+N);
-        printer.println("M =  "+M);
-        printer.println("Thr =  "+t);
+        printer.println("N  =  "+N);
+        printer.println("M  =  "+M);
+        printer.println("Thr = "+t);
         MinMaxTask[] workers = new MinMaxTask[N];
         Thread[] pool = new Thread[N];
         for (int i=0;i<N;i++) {
             workers[i] = new MinMaxTask(arg);
             pool[i] = new Thread(workers[i]);
         }
-        testSize = workers[0].implementor.testSize();
-        buildSubProbs(workers,M);
+        Implementor impl = workers[0].implementor;
+        testSize = impl.staticTestSize();
+        buildSubProbs(impl,M);
         buildMinModules();
         try {
             timer.start();
@@ -124,7 +125,7 @@ public class MinMaxTask extends AbstractTask implements Runnable {
                 trainOver.acquire();
             }
             timer.record(true);
-            workers[0].implementor.setThr(t);
+            impl.staticSetThr(t);
             timer.start();
             for (int i=0;i<N;i++) {
                 testReady.release();
@@ -132,9 +133,9 @@ public class MinMaxTask extends AbstractTask implements Runnable {
             for (int i=0;i<N;i++) {
                 pool[i].join(); 
             }
-            maxModule(workers);
+            maxModule(impl);
             timer.record(false);
-            workers[0].implementor.clear();
+            impl.staticClear();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -154,7 +155,11 @@ public class MinMaxTask extends AbstractTask implements Runnable {
         for (int N=nmin;N<=nmax;N+=nstep) {
             for (int M=mmin;M<=mmax;M+=mstep) {
                 for (double t=tmin;t<tmax+tstep/2;t+=tstep) {
-                    mainThread(args[0],N,M,t);
+                    if (N>0 && M>0) {
+                        mainThread(args[0],N,M,t);
+                    } else {
+                        throw new IllegalArgumentException();
+                    }
                 }
                 printer.println("\t*** CHANGE M ***");
             }

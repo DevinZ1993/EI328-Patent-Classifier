@@ -34,6 +34,6 @@ if __name__=='__main__':
     pl.xlabel('False Positive Rate')
     pl.ylabel('True Positive Rate')
     pl.xlim(-0.1,1.1)
-    pl.ylim(0.0,1.1)
+    pl.ylim(-0.1,1.1)
     pl.show()
 

@@ -37,7 +37,11 @@ class MyTimer {
     private MyPrinter printer;
 
     public MyTimer(MyPrinter printer) {
-        this.printer = printer;
+        if (printer!=null) {
+            this.printer = printer;
+        } else {
+            throw new IllegalArgumentException();
+        }
     }
     public final synchronized void start() {
         if (!state) {
@@ -55,6 +59,13 @@ class MyTimer {
             } else {
                 printer.println("\tTesting: "+delt+" ms elapsed.");
             }
+        }
+    }
+    public final synchronized long read() {
+        if (state) {
+            return System.currentTimeMillis()-start;
+        } else {
+            return 0L;
         }
     }
 }
@@ -81,6 +92,10 @@ class SubProblem {
     public final int size() {
         return list.size();
     }
+
+    /** Static Section: */
+
+    public static final SubProblem DUMMY = new SubProblem();
 }
 
 class TestResult {
@@ -104,7 +119,7 @@ public abstract class Implementor {
     public Implementor(MyPrinter printer) {
         this.printer = printer;
     }
-    public final void genStats(int[] res) {
+    public final void staticGenStats(int[] res) {
         int truePos=0, trueNeg=0, falsePos=0, falseNeg=0;
         for (int i=0;i<res.length;i++) {
             if (getTestTag(i)>0) {
@@ -121,6 +136,7 @@ public abstract class Implementor {
                 }
             }  
         }
+        // System.out.println("\t"+truePos+"\t"+trueNeg+"\t"+falsePos+"\t"+falseNeg);
         recRes(truePos,trueNeg,falsePos,falseNeg);
     }
     private void recRes(int truePos,int trueNeg,int falsePos,int falseNeg) {
@@ -136,14 +152,68 @@ public abstract class Implementor {
         printer.println("\tTPR\t= "+tpr);
         printer.println("\tFPR\t= "+fpr);
     }
+    public void staticSepData(List<Integer> posData,List<Integer> negData) {
+        if (posDataItems==null || negDataItems==null) {
+            synchronized(classLock) {
+                doSepData();
+            }
+        }
+        for (DataItem item: posDataItems) {
+            posData.add(item.index);
+        }
+        for (DataItem item: negDataItems) {
+            negData.add(item.index);
+        }
+    }
+    private void doSepData() {
+        if (posDataItems==null  || negDataItems==null) {
+            System.out.println("Collecting prior knowledge, please wait a minute.");
+            posDataItems = new ArrayList<DataItem>();
+            negDataItems = new ArrayList<DataItem>();
+            try {
+                BufferedReader pin = new BufferedReader(new FileReader("./data/train.txt"));
+                for (int i=0;i<staticTrainSize();i++) {
+                    String line = pin.readLine();
+                    if (line.charAt(0)=='A') {
+                        posDataItems.add(new DataItem(line.substring(0,3),i));
+                    } else {
+                        negDataItems.add(new DataItem(line.substring(0,3),i));
+                    }
+                }
+                pin.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Collections.sort(posDataItems);
+            Collections.sort(negDataItems);
+        }
+    }
 
     public abstract void train(SubProblem sub);
-    public abstract void setThr(double threshold);
-    public abstract void clear();
     public abstract TestResult test();
-    public abstract void sepData(List<Integer> posData,List<Integer> negData);
-    public abstract int  testSize();
+    public abstract void staticSetThr(double threshold);
+    public abstract void staticClear();
     protected abstract int getTestTag(int idx);
+    public abstract int staticTrainSize(); 
+    public abstract int staticTestSize();
     
+    /** Static Section: */
+
+    private static class DataItem implements Comparable<DataItem> {
+        public String key;
+        public int index;
+
+        public DataItem(String key,int index) {
+            this.key = key;
+            this.index = index;
+        }
+        public int compareTo(DataItem other) {
+            return key.compareTo(other.key);
+        }
+    }
+
+    private static List<DataItem> posDataItems, negDataItems;
+    protected static Object classLock = Implementor.class;
+
 }
 

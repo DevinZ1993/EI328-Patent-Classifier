@@ -189,34 +189,32 @@ public class MyImplementor extends Implementor {
         }
         return null;
     }
-    public final synchronized void setThr(double threshold) {
-        for (MyModel model: models) {
-            model.addThr(threshold);
-        }
-        models.add(DUMMY);
-        idxMap.put(DUMMY,-1);
-    }
-    public final synchronized void clear() {
-        models.clear();
-        idxMap.clear();
-    }
-    public final void sepData(List<Integer> posData,List<Integer> negData) {
-        for (int i=0;i<train.size();i++) {
-            if (train.getY(i)>0) {
-                posData.add(i);
-            } else {
-                negData.add(i);
+    public final void staticSetThr(double threshold) {
+        synchronized (classLock) {
+            for (MyModel model: models) {
+                model.addThr(threshold);
             }
+            models.add(DUMMY);
+            idxMap.put(DUMMY,-1);
         }
     }
-    public final int testSize() {
-        return test.size();
+    public final void staticClear() {
+        synchronized (classLock) {
+            models.clear();
+            idxMap.clear();
+        }
     }
     protected final int getTestTag(int idx) {
         if (idx<0 || idx>=test.size()) {
             throw new IllegalArgumentException();
         }
         return (test.getY(idx)>0)? 1:0;
+    }
+    public final int staticTrainSize() {
+        return train.size();
+    }
+    public final int staticTestSize() {
+        return test.size();
     }
 
     /** Static Section: */
@@ -227,7 +225,7 @@ public class MyImplementor extends Implementor {
     private static Map<MyModel,Integer> idxMap;
     
     static {
-        System.out.println("Reading data files, please wait a minute.");
+        System.out.println("Reading input files, please wait a minute.");
         train = new MyProblem("./data/train.in");
         test = new MyProblem("./data/test.in");
         models = new LinkedBlockingQueue<MyModel>();

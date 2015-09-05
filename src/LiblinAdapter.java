@@ -54,64 +54,70 @@ public class LiblinAdapter extends Implementor {
         }
         return null;
     }
-    public final synchronized void setThr(double threshold) {
-        try {
-            int numOfModel = models.size();
-            for (int n=0;n<numOfModel;n++) {
-                Model model = models.take();
-                int idx = idxMap.remove(model);
-                model.save(new File("./data/old_model.txt"));
-                BufferedReader fin = new BufferedReader(new FileReader("./data/old_model.txt"));
-                PrintWriter fout = new PrintWriter(new FileWriter("./data/new_model.txt"));
-                for (int i=0;i<3;i++) {
-                    fout.println(fin.readLine());
+    public final void staticSetThr(double threshold) {
+        synchronized (classLock) {
+            try {
+                int numOfModel = models.size();
+                for (int n=0;n<numOfModel;n++) {
+                    Model model = models.take();
+                    int idx = idxMap.remove(model);
+                    model.save(new File("./data/old_model.txt"));
+                    modifyModelFile(threshold);
+                    model = Model.load(new File("./data/new_model.txt"));
+                    models.put(model);
+                    idxMap.put(model,idx);
                 }
-                StringTokenizer tok = new StringTokenizer(fin.readLine());
-                fout.print(tok.nextToken()+" ");
-                int num = Integer.parseInt(tok.nextToken());
-                fout.println(num);
-                for (int i=0;i<num+2;i++) {
-                    fout.println(fin.readLine());
-                }
-                tok = new StringTokenizer(fin.readLine());
-                double cst = Double.parseDouble(tok.nextToken());
-                cst -= threshold;
-                fout.println(cst+" ");
-                fout.close();
-                fin.close();
-                model = Model.load(new File("./data/new_model.txt"));
-                models.put(model);
-                idxMap.put(model,idx);
+                models.put(DUMMY);
+                idxMap.put(DUMMY,-1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            models.put(DUMMY);
-            idxMap.put(DUMMY,-1);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        }
+    }
+    private void modifyModelFile(double thr) {
+        try {
+            BufferedReader fin = new BufferedReader
+                (new FileReader("./data/old_model.txt"));
+            PrintWriter fout = new PrintWriter
+                (new FileWriter("./data/new_model.txt"));
+            for (int i=0;i<3;i++) {
+                fout.println(fin.readLine());
+            }
+            StringTokenizer tok = new StringTokenizer(fin.readLine());
+            fout.print(tok.nextToken()+" ");
+            int num = Integer.parseInt(tok.nextToken());
+            fout.println(num);
+            for (int i=0;i<num+2;i++) {
+                fout.println(fin.readLine());
+            }
+            tok = new StringTokenizer(fin.readLine());
+            double cst = Double.parseDouble(tok.nextToken());
+            fout.println((cst-thr)+" ");
+            fout.close();
+            fin.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    public final synchronized void clear() {
-        models.clear();
-        idxMap.clear();
-    }
-    public final void sepData(List<Integer> posData,List<Integer> negData) {
-        for (int i=0;i<train.l;i++) {
-            if (train.y[i]>0) {
-                posData.add(i);
-            } else {
-                negData.add(i);
-            }
+    public final void staticClear() {
+        synchronized(classLock) {
+            models.clear();
+            idxMap.clear();
         }
-    }
-    public final int testSize() {
-        return test.l;
     }
     protected final int getTestTag(int idx) {
         if (idx<0 || idx>=test.l) {
             throw new IllegalArgumentException();
         }
         return (test.y[idx]>0)? 1:0;
+    }
+    public final int staticTrainSize() {
+        return train.l;
+    }
+    public final int staticTestSize() {
+        return test.l;
     }
 
     /** Static Section: */
@@ -120,10 +126,10 @@ public class LiblinAdapter extends Implementor {
     private static BlockingQueue<Model> models;
     private static final Model DUMMY = new Model();
     private static Map<Model,Integer> idxMap;
-    
+ 
     static {
         try {
-            System.out.println("Reading data files, please wait a minute.");
+            System.out.println("Reading input files, please wait a minute.");
             train = Train.readProblem(new File("./data/train.in"),1);
             test = Train.readProblem(new File("./data/test.in"),1);
             models = new LinkedBlockingQueue<Model>();

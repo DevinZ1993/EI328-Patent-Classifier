@@ -9,16 +9,16 @@ public class BasicTask extends AbstractTask {
     private void work(double t) {
         printer.println();
         printer.println();
-        printer.println("Thr =  "+t);
+        printer.println("Thr = "+t);
         timer.start();
         implementor.train(null);
         timer.record(true);
-        implementor.setThr(t);
+        implementor.staticSetThr(t);
         timer.start();
-        TestResult res = implementor.test();
-        implementor.genStats(res.array);
+        int[] res = implementor.test().array;
+        implementor.staticGenStats(res);
         timer.record(false);
-        implementor.clear();
+        implementor.staticClear();
     }
 
     /** Static Section: */
