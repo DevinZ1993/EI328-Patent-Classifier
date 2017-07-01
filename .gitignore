@@ -1,0 +1,10 @@
+bin/*
+data/*
+lib/*
+log/*
+.project
+.classpath
+*.pyc
+*.in
+*.out
+*.log
